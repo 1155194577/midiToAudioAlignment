@@ -1,4 +1,4 @@
-from search_algorithm import brute_force_search, random_search
+from search_algorithm import brute_force_search
 from midi_processing import convert_midi_to_note_event_intervals, convert_tick_to_seconds, get_midi_bpm, get_midi_tick_per_second, convert_note_event_intervals_to_mid, transform_note_event_interval, convert_seconds_to_tick
 from audio_processing import load_reference_contour, trim_times_below_threshold
 import mido
@@ -21,7 +21,7 @@ def load_and_process_midi(path: str) -> tuple:
 
 def define_search_space(base_bpm: float) -> dict:
     """Generate parameter ranges for search algorithm."""
-    horizontal_range = np.arange(3, 5, 0.1)
+    horizontal_range = np.arange(0, 5, 0.1)
     bpm_range = [base_bpm + offset for offset in np.arange(-10, 10, 1)]
     scaling_factors = np.unique(np.concatenate([
         [base_bpm/x for x in bpm_range],
@@ -34,17 +34,12 @@ def define_search_space(base_bpm: float) -> dict:
         'scaling_factor': scaling_factors
     }
 
-def run_search(strategy: str, ref_contour, times, note_events, search_space) -> tuple:
+def run_search(ref_contour, times, note_events, search_space) -> tuple:
     """Execute search algorithm and return best parameters."""
     record = []
-    if strategy == 'brute_force':
-        best_params, similarity = brute_force_search(
-            ref_contour, times, note_events, search_space, record
-        )
-    else:  # Default to random search
-        best_params, similarity = random_search(
-            ref_contour, times, note_events, search_space, record, n_iter=10
-        )
+    best_params, similarity = brute_force_search(
+        ref_contour, times, note_events, search_space, record
+    )
     return best_params, similarity, record
 
 def save_optimized_midi(params, note_events, tick_rate, bpm, output_path: str):
@@ -57,11 +52,11 @@ def save_optimized_midi(params, note_events, tick_rate, bpm, output_path: str):
 
 def main(trim_factor: float = 0.7):
     # 1. Load reference contour data
-    ref_contour, times = load_reference_data("./input/fight_song/fight_song.csv", trim_factor)
+    ref_contour, times = load_reference_data("./input/taylor/taylor.csv", trim_factor)
     # ref_contour, times = load_reference_data("./input/birds_of_feather/birds_of_feather.csv", trim_factor)
     
     # 2. Process MIDI file
-    midi_bpm, tick_rate, note_events = load_and_process_midi("./input/fight_song/fight_song.mid")
+    midi_bpm, tick_rate, note_events = load_and_process_midi("./input/taylor/taylor.mid")
     # midi_bpm, tick_rate, note_events = load_and_process_midi("./input/birds_of_feather/birds_of_feather.mid")
     
     # 3. Define search space
@@ -69,7 +64,7 @@ def main(trim_factor: float = 0.7):
     
     # 4. Run search (default to brute-force)
     best_params, similarity, record = run_search(
-        'brute_force', ref_contour, times, note_events, search_space
+        ref_contour, times, note_events, search_space
     )
     
     # Output results
@@ -78,17 +73,17 @@ def main(trim_factor: float = 0.7):
     print(f"Original BPM: {midi_bpm}, New BPM: {midi_bpm / best_params[2]}")
     
     # Save search results
-    convert_search_record_to_dataframe(record).to_csv("./output/fight_song/search_results.csv", index=False)
+    convert_search_record_to_dataframe(record).to_csv("./output/taylor/search_results.csv", index=False)
     
     # 5. Save optimized MIDI
     save_optimized_midi(
         best_params, note_events, tick_rate, midi_bpm,
-        "./output/fight_song/fight_song.mid"
+        "./output/taylor/taylor.mid"
     )
     return trim_factor, best_params , similarity
 if __name__ == "__main__":
     results = []
-    for trim_factor in [0.5,0.6,0.7,0.8]:
+    for trim_factor in [0.7]:
         result = main(trim_factor)
         results.append(result)
     print("All results:")
